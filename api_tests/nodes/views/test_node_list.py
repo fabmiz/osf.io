@@ -861,6 +861,39 @@ class TestNodeCreate:
         res = app.post_json_api(url, templated_project_data, auth=user_one.auth, expect_errors=True)
         assert res.status_code == 403
 
+    def test_templating_from_doubly_linked_node(self, app, user_one, url):
+        project_one = ProjectFactory(creator=user_one)
+        project_two = ProjectFactory(creator=user_one)
+        project_one.add_pointer(project_two, auth=Auth(user_one), save=True)
+        project_two.add_pointer(project_one, auth=Auth(user_one), save=True)
+
+        template_from = project_one
+        templated_project_title = 'Templated Project One'
+        templated_project_data = {
+            'data': {
+                'type': 'nodes',
+                'attributes':
+                    {
+                        'title': templated_project_title,
+                        'category': template_from.category,
+                        'template_from': template_from._id,
+                    }
+            }
+        }
+
+        res = app.post_json_api(url, templated_project_data, auth=user_one.auth)
+        assert res.status_code == 201
+        json_data = res.json['data']
+
+        new_project_id = json_data['id']
+        new_project = AbstractNode.load(new_project_id)
+        assert new_project.title == templated_project_title
+        assert not new_project.description
+        assert len(new_project.nodes) == 1
+        assert len(new_project.nodes) == len(template_from.nodes)
+        assert new_project.node_relations.first().is_node_link is True
+        assert new_project.node_relations.first().child == template_from.node_relations.first().child
+
     def test_creates_project_from_template(self, app, user_one, category, url):
         template_from = ProjectFactory(creator=user_one, is_public=True)
         template_component = ProjectFactory(creator=user_one, is_public=True, parent=template_from)

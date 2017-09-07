@@ -1991,7 +1991,11 @@ class AbstractNode(DirtyFieldsMixin, TypedModel, AddonModelMixin, IdentifierMixi
         for node_relation in self.node_relations.select_related('child').filter(child__is_deleted=False):
             child = node_relation.child
             if child.can_view(auth):
-                templated_child = child.use_as_template(auth, changes, top_level=False)
+                templated_child = None
+                if not node_relation.is_node_link:
+                    templated_child = child.use_as_template(auth, changes, top_level=False)
+                else:
+                    templated_child = child
                 NodeRelation.objects.get_or_create(parent=new, child=templated_child,
                                                    is_node_link=node_relation.is_node_link)
 
