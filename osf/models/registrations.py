@@ -165,6 +165,12 @@ class Registration(AbstractNode):
         return self.retraction.is_pending_approval
 
     @property
+    def is_pending_embargo_termination(self):
+        return (self.is_embargoed and
+                bool(self.embargo_termination_approval) and
+                self.embargo_termination_approval.is_pending_approval)
+
+    @property
     def is_embargoed(self):
         """A Node is embargoed if:
         - it has an associated Embargo record
@@ -174,7 +180,7 @@ class Registration(AbstractNode):
         if self.embargo is None:
             if self.parent_node:
                 return self.parent_node.is_embargoed
-        return self.embargo and self.embargo.is_approved and not self.is_public
+        return bool(self.embargo) and self.embargo.is_approved and not self.is_public
 
     @property
     def embargo_end_date(self):
